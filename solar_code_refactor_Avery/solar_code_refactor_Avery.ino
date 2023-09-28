@@ -163,22 +163,22 @@ void setupPWM(){
   digitalWrite(pin_elevation_direction,0);
   digitalWrite(pin_elevation_activate,1);
   Serial.println("Running elevation up");
-  wait(1000);
+  delay(1000);
 
   digitalWrite(pin_elevation_direction,1);
   Serial.println("Running elevation down");
-  wait(1000);
+  delay(1000);
 
   digitalWrite(pin_elevation_direction,0);
   digitalWrite(pin_elevation_activate,0); 
   digitalWrite(pin_azimuth_direction,0); 
   digitalWrite(pin_azimuth_activate,1);
   Serial.println("Running azimuth up");
-  wait(1000);
+  delay(1000);
 
   digitalWrite(pin_azimuth_direction,1);
   Serial.println("Running azimuth down");
-  wait(1000);
+  delay(1000);
  
   digitalWrite(pin_azimuth_direction,0); 
   digitalWrite(pin_azimuth_activate,0);
