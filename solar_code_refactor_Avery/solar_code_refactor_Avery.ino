@@ -22,6 +22,7 @@ const uint8_t wifi_timeout = 20;
 #define pin_azimuth_pulse 33
 #define pin_azimuth_activate 25
 
+
 #define pin_elevation_pulse 26
 #define pin_elevation_direction 27
 #define pin_elevation_activate 13
@@ -71,6 +72,10 @@ uint8_t status = 0;
 
 #define elevation_tolerance 1
 #define azimuth_tolerance 1
+
+#define motor_on 0
+#define motor_off 1
+
 
 //#define panel_longitude -2.148975
 //#define panel_latitude 0.8582642
@@ -132,14 +137,21 @@ double azimuth;
 
 
 // setting PWM properties
-const int azimuthFreq = 1;
+const int azimuthFreq = 400;
 const int azimuthChannel = 0;
-const int elevationFreq = 1;
+const int elevationFreq = 400;
 const int elevationChannel = 1;
 const int pwm_resolution = 16;
 
 
 void setupPWM(){
+
+  pinMode(33, OUTPUT);
+  pinMode(32, OUTPUT);
+  pinMode(25, OUTPUT);
+  pinMode(26, OUTPUT);
+  pinMode(27, OUTPUT);
+  pinMode(13, OUTPUT);
   // configure LED PWM functionalitites
   int sixteenBitHalfDuty = 32767;
   ledcSetup(azimuthChannel, azimuthFreq, pwm_resolution);
@@ -156,33 +168,10 @@ void setupPWM(){
   ledcWrite(elevationChannel, sixteenBitHalfDuty);
   Serial.println("Activating pulses");
 
-  // Perform test if motors are running
-  
-  digitalWrite(pin_azimuth_direction,0);
-  digitalWrite(pin_azimuth_activate,0);
-  digitalWrite(pin_elevation_direction,0);
-  digitalWrite(pin_elevation_activate,1);
-  Serial.println("Running elevation up");
-  delay(1000);
-
-  digitalWrite(pin_elevation_direction,1);
-  Serial.println("Running elevation down");
-  delay(1000);
-
-  digitalWrite(pin_elevation_direction,0);
-  digitalWrite(pin_elevation_activate,0); 
-  digitalWrite(pin_azimuth_direction,0); 
-  digitalWrite(pin_azimuth_activate,1);
-  Serial.println("Running azimuth up");
-  delay(1000);
-
-  digitalWrite(pin_azimuth_direction,1);
-  Serial.println("Running azimuth down");
-  delay(1000);
- 
-  digitalWrite(pin_azimuth_direction,0); 
-  digitalWrite(pin_azimuth_activate,0);
-
+  digitalWrite(pin_elevation_activate,motor_off);
+  digitalWrite(pin_elevation_direction,motor_off);
+  digitalWrite(pin_azimuth_activate,motor_off);
+  digitalWrite(pin_azimuth_direction,motor_off);
 
 }
 //end of debugging functions
@@ -241,21 +230,31 @@ void disconnectWiFi()
 void update_panel_position() {
 
   Wire.beginTransmission(CMPS12_ADDRESS);  //starts communication with CMPS12
+  Serial.println("begin");
   Wire.write(1);                     //Sends the register we wish to start reading from
-  Wire.endTransmission();  
+  Serial.println("write");
+  Wire.endTransmission();
+  Serial.println("endTransmission");  
 
-  Wire.requestFrom(CMPS12_ADDRESS, 5);       
+  Wire.requestFrom(CMPS12_ADDRESS, 5);
+  Serial.println("request");       
   
   while(Wire.available() < 5);        // Wait for all bytes to come back (TODO: What if it doesn't?)
-  
+  Serial.println("available");
+
   uint8_t angle8, high_byte, low_byte, pitchAngle, rollAngle;
   uint16_t compassDirection;
 
   angle8 = Wire.read();               // Read back the 5 bytes
+  Serial.println("readAngle8");
   high_byte = Wire.read();
+  Serial.println("readHighByte");
   low_byte = Wire.read();
+  Serial.println("readLowByte");
   pitchAngle = Wire.read();
+  Serial.println("readPitchAngle");
   rollAngle = Wire.read();
+  Serial.println("readRollAngle");
   
   compassDirection = high_byte;                 // Calculate 16 bit angle
   compassDirection <<= 8;
@@ -263,6 +262,8 @@ void update_panel_position() {
 
   azimuth = compassDirection;
   elevation = 90.0 - pitchAngle;
+  Serial.println(azimuth);
+  Serial.println(elevation);
 
 }
 
@@ -391,10 +392,11 @@ void track()
 void setup()
 {
   Serial.begin(115200);
+  Wire.begin(21,22);
   mode = starting;
   setupPWM();
   synchronizeTime();
-  //update_panel_position();
+  update_panel_position();
   //update_solar_position();
   //last_solar_update = get_current_time();
   //poll_target_switch();
@@ -404,23 +406,42 @@ void setup()
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if(ready)
-  {
+
+  digitalWrite(pin_elevation_activate,motor_on);
+  digitalWrite(pin_elevation_direction,motor_off);
+  digitalWrite(pin_azimuth_activate,motor_on);
+  digitalWrite(pin_azimuth_direction,motor_off);
+  Serial.println("left");
+  delay(1000);
+  
+  digitalWrite(pin_elevation_direction,motor_on);
+  digitalWrite(pin_azimuth_direction,motor_on);
+  Serial.println("right");
+  delay(1000);
+
+  digitalWrite(pin_elevation_activate,motor_off);
+  digitalWrite(pin_elevation_direction,motor_off);
+    digitalWrite(pin_azimuth_activate,motor_off);
+  digitalWrite(pin_azimuth_direction,motor_off);
+  Serial.println("off");
+  delay(1000);
+  //if(ready)
+  //{
 
   //Start debugging
   //End debbuging
 
-    poll_target_switch();
+    //poll_target_switch();
     //poll_limit_switches();
 
-    double now = get_current_time();
+    //double now = get_current_time();
     update_panel_position();
 
-    if(now - last_solar_update > solar_update_interval)
-    {
-      update_solar_position();
-    }
+    //if(now - last_solar_update > solar_update_interval)
+    //{
+    //  update_solar_position();
+    //}
     
-    track();
-  }
+   //track();
+  //}
 }
