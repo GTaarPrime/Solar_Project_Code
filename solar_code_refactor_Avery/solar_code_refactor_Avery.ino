@@ -27,6 +27,11 @@ const uint8_t wifi_timeout = 20;
 #define pin_elevation_direction 27
 #define pin_elevation_activate 13
 
+
+#define pin_compass_sda 21
+#define pin_compass_scl 22
+
+
 //these define the pins used for the manual operation buttons for controlling the stepper motors
 //these pins were changed when the circuit board was transferred
 #define button_azimuth_right 34
@@ -54,18 +59,18 @@ uint8_t status = 0;
 #define panel_longitude -123.12722631  
 #define panel_latitude 49.17491793 
 
-#define timezone -7
+#define panel_timezone -7
 // Local solar time meridian = 15*timezone = -105
 // #define LSTM -105.0
 // Longitude correction for time = longitude - LSTM
-#define longTC -18.12722631
+//#define longTC -18.12722631
 // sin and cos of latitude (used in position calculation)
 #define sinLat 0.756707593
 #define cosLat 0.653753485
 // Number of degrees the Earth moves around the sun in 1 day (360/365.25)
 #define degs_per_day 0.98562628336
-#define CMPS12_ADDRESS 192
-
+//#define CMPS12_ADDRESS 192
+#define CMPS12_ADDRESS 0x60
 
 #define default_elevation panel_latitude
 #define default_azimuth 180
@@ -242,7 +247,8 @@ void update_panel_position() {
   while(Wire.available() < 5);        // Wait for all bytes to come back (TODO: What if it doesn't?)
   Serial.println("available");
 
-  uint8_t angle8, high_byte, low_byte, pitchAngle, rollAngle;
+  uint8_t angle8, high_byte, low_byte, 
+  int8_t pitchAngle, rollAngle;
   uint16_t compassDirection;
 
   angle8 = Wire.read();               // Read back the 5 bytes
@@ -261,7 +267,8 @@ void update_panel_position() {
   compassDirection += low_byte;
 
   azimuth = compassDirection;
-  elevation = 90.0 - pitchAngle;
+  azimuth /= 10.0
+  elevation = (double)pitchAngle;
   Serial.println(azimuth);
   Serial.println(elevation);
 
@@ -311,18 +318,27 @@ void solar_position(double* el, double* az, struct tm* t)
 		double sindB = sin(radians(B));
 		double cosdB = cos(radians(B));
 
+    // Adjust for longitudinal position within the timezone
+    double LSTM = 15.0 * panel_timezone;
+    double longTC = panel_longitude - LSTM;
+
 		double EoT = 19.74 * sindB * cosdB - 7.53 * cosdB - 1.5 * sindB;
-		double LST = LT + (longTC + EoT) / 60.0;  // Local solar time
+		double LST = LT + (4.0 * longTC + EoT) / 60.0;  // Local solar time
 		double hour_angle = 15.0 * (LST - 12.0);
 
 		double declination = 23.45 * sindB;
 
+    double sindHRA = sin(radians(hour_angle));
 		double cosdHRA = cos(radians(hour_angle));
 		double sindDec = sin(radians(declination));
 		double cosdDec = cos(radians(declination));
 
-		*el = degrees(asin(sindDec * sinLat + cosdDec * cosLat * cosdHRA));
-		*az = degrees(acos((sindDec * cosLat - cosdDec * sinLat * cosdHRA)/cos(radians(elevation))));
+		*el = degrees(asin(sindDec * sinLat + cosdDec * cosLat * cosdHRA));    
+    double az1 = degrees(acos((sindDec * cosLat - cosdDec * sinLat * cosdHRA)/cos(radians(*el))));
+    if(sindHRA > 0) 
+      *az = 360.0 - az1;
+    else
+      *az = az1;
   }
 
 void update_solar_position()
@@ -392,7 +408,7 @@ void track()
 void setup()
 {
   Serial.begin(115200);
-  Wire.begin(21,22);
+  Wire.begin(pin_compass_sda,pin_compass_scl);
   mode = starting;
   setupPWM();
   synchronizeTime();
