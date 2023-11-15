@@ -9,8 +9,10 @@ const char * ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = -8 * 3600;
 const int daylightOffset_sec = 3600;
 
-const char * ssid[] = {"SM-G930W83609","SillyPeaHead","Pixel_4922"};
-const char * password[] = {"ntrl1215","EarlierTudors1485","jameshotspot"};
+const char * ssid[] = {"Pixel_4922","SM-G973W6976"};
+const char * password[] = {"jameshotspot", "vsqm5382"};
+
+uint8_t nwifioptions = 2;
 
 const uint8_t wifi_timeout = 20;
 
@@ -182,7 +184,7 @@ void setupPWM(){
 //end of debugging functions
 uint8_t connectToWiFi(uint8_t wifi_option = 0)
 {
-  if(wifi_option > 2) return 0;
+  if(wifi_option > nwifioptions - 1) return 0;
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid[wifi_option], password[wifi_option]);
   Serial.println("Connecting to WiFi ..");
@@ -235,39 +237,29 @@ void disconnectWiFi()
 void update_panel_position() {
 
   Wire.beginTransmission(CMPS12_ADDRESS);  //starts communication with CMPS12
-  Serial.println("begin");
   Wire.write(1);                     //Sends the register we wish to start reading from
-  Serial.println("write");
-  Wire.endTransmission();
-  Serial.println("endTransmission");  
+  Wire.endTransmission(); 
 
-  Wire.requestFrom(CMPS12_ADDRESS, 5);
-  Serial.println("request");       
+  Wire.requestFrom(CMPS12_ADDRESS, 5);     
   
   while(Wire.available() < 5);        // Wait for all bytes to come back (TODO: What if it doesn't?)
-  Serial.println("available");
 
-  uint8_t angle8, high_byte, low_byte, 
+  uint8_t angle8, high_byte, low_byte; 
   int8_t pitchAngle, rollAngle;
   uint16_t compassDirection;
 
   angle8 = Wire.read();               // Read back the 5 bytes
-  Serial.println("readAngle8");
   high_byte = Wire.read();
-  Serial.println("readHighByte");
   low_byte = Wire.read();
-  Serial.println("readLowByte");
   pitchAngle = Wire.read();
-  Serial.println("readPitchAngle");
   rollAngle = Wire.read();
-  Serial.println("readRollAngle");
   
   compassDirection = high_byte;                 // Calculate 16 bit angle
   compassDirection <<= 8;
   compassDirection += low_byte;
 
   azimuth = compassDirection;
-  azimuth /= 10.0
+  azimuth /= 10.0;
   elevation = (double)pitchAngle;
   Serial.println(azimuth);
   Serial.println(elevation);
@@ -286,7 +278,7 @@ double julian_day(struct tm& thetime)
 {
 	time_t epoch_time = mktime(&thetime);
 	double epoch_days = floor(epoch_time / 86400.0);
-	return epoch_days + 2440587.5 + day_fraction(thetime) - timezone / 24.0;
+	return epoch_days + 2440587.5 + day_fraction(thetime) - panel_timezone / 24.0;
 }
 
 double day_fraction(struct tm& thetime)
@@ -411,36 +403,52 @@ void setup()
   Wire.begin(pin_compass_sda,pin_compass_scl);
   mode = starting;
   setupPWM();
+  //connectToWiFi();
   synchronizeTime();
-  update_panel_position();
+  //update_panel_position();
   //update_solar_position();
   //last_solar_update = get_current_time();
   //poll_target_switch();
   ready = TRUE; 
 }
 
-
-void loop() {
-  // put your main code here, to run repeatedly:
-
+void motortest()
+{
   digitalWrite(pin_elevation_activate,motor_on);
   digitalWrite(pin_elevation_direction,motor_off);
   digitalWrite(pin_azimuth_activate,motor_on);
   digitalWrite(pin_azimuth_direction,motor_off);
   Serial.println("left");
   delay(1000);
+
+  digitalWrite(pin_elevation_activate,motor_off);
+  digitalWrite(pin_elevation_direction,motor_off);
+  digitalWrite(pin_azimuth_activate,motor_off);
+  digitalWrite(pin_azimuth_direction,motor_off);
+  Serial.println("off");
+  delay(2000);
   
+  digitalWrite(pin_elevation_activate,motor_on);
   digitalWrite(pin_elevation_direction,motor_on);
+  digitalWrite(pin_azimuth_activate,motor_on);
   digitalWrite(pin_azimuth_direction,motor_on);
   Serial.println("right");
   delay(1000);
 
   digitalWrite(pin_elevation_activate,motor_off);
   digitalWrite(pin_elevation_direction,motor_off);
-    digitalWrite(pin_azimuth_activate,motor_off);
+  digitalWrite(pin_azimuth_activate,motor_off);
   digitalWrite(pin_azimuth_direction,motor_off);
   Serial.println("off");
   delay(1000);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+  //motortest();
+
+  //delay(1000);
   //if(ready)
   //{
 
@@ -451,7 +459,7 @@ void loop() {
     //poll_limit_switches();
 
     //double now = get_current_time();
-    update_panel_position();
+    //update_panel_position();
 
     //if(now - last_solar_update > solar_update_interval)
     //{
