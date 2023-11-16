@@ -9,10 +9,10 @@ const char * ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = -8 * 3600;
 const int daylightOffset_sec = 3600;
 
-const char * ssid[] = {"Pixel_4922","SM-G973W6976"};
-const char * password[] = {"jameshotspot", "vsqm5382"};
+const char * ssid[] = {"Pixel_4922","SM-G973W6976","SillyPeaHead"};
+const char * password[] = {"jameshotspot", "vsqm5382","EarlierTudors1485"};
 
-uint8_t nwifioptions = 2;
+uint8_t nwifioptions = 3;
 
 const uint8_t wifi_timeout = 20;
 
@@ -325,6 +325,11 @@ void solar_position(double* el, double* az, struct tm* t)
 		double sindDec = sin(radians(declination));
 		double cosdDec = cos(radians(declination));
 
+    Serial.printf("\nEoT: %0.4f Dec: %0.4f ",EoT,declination);
+    Serial.println(&current_time, "Time: %A, %B %d %Y %H:%M:%S");
+
+    delay(750);
+
 		*el = degrees(asin(sindDec * sinLat + cosdDec * cosLat * cosdHRA));    
     double az1 = degrees(acos((sindDec * cosLat - cosdDec * sinLat * cosdHRA)/cos(radians(*el))));
     if(sindHRA > 0) 
@@ -403,7 +408,7 @@ void setup()
   Wire.begin(pin_compass_sda,pin_compass_scl);
   mode = starting;
   setupPWM();
-  //connectToWiFi();
+  connectToWiFi();
   synchronizeTime();
   //update_panel_position();
   //update_solar_position();
@@ -463,9 +468,13 @@ void loop() {
 
     //if(now - last_solar_update > solar_update_interval)
     //{
-    //  update_solar_position();
+      update_solar_position();
     //}
     
+    //Serial.printf("\n\nEl: %f Az: %f ",sun_elevation,sun_azimuth);
+    //Serial.println(&current_time, "Time: %A, %B %d %Y %H:%M:%S");
+    //delay(500);
+
    //track();
   //}
 }
